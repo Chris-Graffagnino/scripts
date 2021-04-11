@@ -44,6 +44,8 @@ For normal logfiles use this configuration:
 
 failregex = ^.*HardForkEncoderDisabledEra.*"address":"<HOST>:.*$
             ^.*version data mismatch.*"address":"<HOST>:.*$
+            ^.*"address":"<HOST>:.*version data mismatch.*$
+
 
 ```
 
