@@ -2,9 +2,9 @@
 
 *Examples on how to use the scripts **ONLINE** and/or **OFFLINE**, with or without a **Ledger/Trezor-Wallet** can be found on this page :smiley:*
 
-| | [cardano-cli](https://github.com/input-output-hk/cardano-node/releases/latest) | [cardano-node](https://github.com/input-output-hk/cardano-node/releases/latest) | [cardano-hw-cli](https://github.com/vacuumlabs/cardano-hw-cli/releases/latest) | Ledger Cardano-App | Trezor Firmware |
-| :---  |   :---:     |    :---:     |     :---:      |     :---:      |     :---:      |
-| *Required<br>version<br><sub>or higher</sub>* | <b>1.26.1</b><br><sub>**git checkout tags/1.26.1**</sub> | <b>1.26.1</b><br><sub>**git checkout tags/1.26.1**</sub> | <b>1.2.0</b><br><sub>**if you use hw-wallets** | <b>2.2.0</b><br><sub>**if you use hw-wallets** | <b>2.3.6</b><br><sub>**if you use hw-wallets** |
+| | [cardano-node & cli](https://github.com/input-output-hk/cardano-node/releases/latest) | [cardano-hw-cli](https://github.com/vacuumlabs/cardano-hw-cli/releases/latest) | Ledger Cardano-App | Trezor Firmware |
+| :---  |    :---:     |     :---:      |     :---:      |     :---:      |
+| *Required<br>version<br><sub>or higher</sub>* | <b>1.27.0</b><br><sub>**git checkout tags/1.27.0**</sub> | <b>1.5.0</b><br><sub>**if you use hw-wallets** | <b>2.3.2</b><br><sub>**if you use hw-wallets** | <b>2.3.6</b><br><sub>**if you use hw-wallets** |
 
 > *:bulb: PLEASE USE THE **CONFIG AND GENESIS FILES** FROM [**here**](https://hydra.iohk.io/job/Cardano/cardano-node/cardano-deployment/latest-finished/download/1/index.html), choose mainnet*. 
 
@@ -13,7 +13,7 @@
 
 <img src="https://www.stakepool.at/pics/stakepool_operator_scripts.png" align="right" border=0>
 
-Theses scripts here should help you to manage your StakePool via the CLI. As always use them at your own risk, but they should be errorfree. Scripts were made to make things easier while learning all the commands and steps to bring up the stakepool node. So, don't be mad at me if something is not working. CLI calls are different almost daily currently.<br>&nbsp;<br>
+Theses scripts here should help you to manage your StakePool via the CLI. As always use them at your own risk, but they should be errorfree. Scripts were made to make things easier while learning all the commands and steps to bring up the stakepool node. So, don't be mad at me if something is not working. CLI calls are different almost daily currently. As always, use them at your own risk.<br>&nbsp;<br>
 Some scripts are using **jq, curl, bc & xxd** so make sure you have it installed with a command like<br>```$ sudo apt update && sudo apt install -y jq curl bc xxd```
 
 &nbsp;<br>
@@ -448,6 +448,22 @@ Also you can force the script to do a re-registration by adding the keyword RERE
   <br>```./08b_deregStakingAddrCert.sh owner.staking owner.payment``` this will retire your owner staking address with the cert generated with script 08a from the blockchain.
 
 &nbsp;<br>
+* **09a_catalystVote.sh:** Script for generating Catalyst-Registration Data and the QR Code for the Voting-App
+  <br>```09a_catalystVote.sh new <voteKeyName>```generates a new VotingKeyPair with the given name
+  <br>```09a_catalystVote.sh new myvote``` generates a new VotingKeyPair myvote.voting.skey/pkey
+
+  <br>```09a_catalystVote.sh qrcode <voteKeyName> <4-Digit-PinCode>``` shows the QR code for the Catalyst-App with the given 4-digit PinCode
+  <br>```09a_catalystVote.sh qrcode myvote 1234``` shows the QR code for the VotingKey 'myvote' and protects it with the PinCode '1234'
+
+  <br>```09a_catalystVote.sh genmeta <voteKeyName> <stakeName-to-register> [Optional: <rewardsPayoutStakeAddr>]``` generates the Catalyst-Registration-Metadata(cbor) for the given name, stakeAccountName and optional different rewardsPayoutStakeAddr
+
+  <br>```09a_catalystVote.sh genmeta myvote owner``` generates the Catalyst-Registration-Metadata(cbor) for the myvote VotingKey, amountToRegister via owner.staking,
+              RewardsPayout to the Address owner.staking.addr. With HW-Wallets, the RewardsPayout-Addr must be one of the HW-Wallet itself!
+
+  <br>```09a_catalystVote.sh genmeta myvote owner myrewards``` generates the Catalyst-Registration-Metadata(cbor) for the myvote VotingKey, amountToRegister via owner.staking,
+              RewardsPayout to the Address myrewards.payment.addr. With HW-Wallets, the RewardsPayout-Addr must be one of the HW-Wallet itself!
+  
+&nbsp;<br>
 * **10_genPolicy.sh:** generate policy keys, signing script and id as files **name.policy.skey/vkey/script/id**. You need a policy for Token minting.
   <br>```./10_genPolicy.sh <PolicyName> [Optional valid xxx Slots (default=unlimited)]```
   
@@ -483,7 +499,7 @@ Also you can force the script to do a re-registration by adding the keyword RERE
   It generally depends on the Policy-Type (made by the script 10) if you can burn unlimited Tokens or if you are Time-Limited so a fixed Value of Tokens exists and there will never be less.
 
 &nbsp;<br>
-* **12a_genAssetMeta.sh:** is used to generate and sign the special JSON format which is used to register your Token Metadata on the Token-Registry-Server. This script needs the tool **cardano-metadata-submitter** from IOHK (https://github.com/input-output-hk/cardano-metadata-submitter). I uploaded a version of it into the scripts directory so you have a faster start.
+* **12a_genAssetMeta.sh:** is used to generate and sign the special JSON format which is used to register your Token Metadata on the Token-Registry-Server. This script needs the tool **token-metadata-creator** from IOHK (https://github.com/input-output-hk/offchain-metadata-tools). I uploaded a version of it into the scripts directory so you have a faster start.
   <br>```./12a_genAssetMeta.sh <PolicyName.AssetName>```
   
   ```./12a_genAssetMeta.sh mypolicy.SUPERTOKEN```<br>this will generate the MetadataRegistration-JSON for the SUPERTOKEN and policy 'mypolicy'
@@ -1034,6 +1050,71 @@ Yep, it was that simple.
 
 </details>
 
+## Catalyst-Voting with your HW-Wallet
+
+It is possible to also vote with funds on HW-Wallets, like your SPO-Pledge funds or any other funds your have stored on a secure HW-Wallet. Starting with Fund4-Catalyst-Voting you can do this with a stake-account on a HW-Wallet. **IMPORTANT**, the rewards-account (stake-address) for the voting-rewards must also be on **THE SAME** HW-Wallet. But more about that later.
+   
+Important - you need the `cardano-hw-cli` version **1.5.0** or above for that!
+
+<details>
+   <Summary><b>See the 4 simple Steps needed to generate the Voting-Registration-Data and QR-Code ... </b>:bookmark_tabs:<br></summary>
+
+### 1. Generate a Voting-KeyPair
+
+You need a Voting-KeyPair, this is a **name**.voting.skey/pkey file pair. This will represent your Vote on the Catalyst Voting, so it will also hold your "Voting-Power". You can link your Voting-KeyPair with more than one Stake-Address to combine your "Voting-Power" if you like, but you need at least one such Voting-KeyPair. Also you can keep this Voting-KeyPair for future Votings, not needed to regenerate this again later. So lets create a Voting-KeyPair with the name **myvote**.
+
+<br><b>Steps:</b>
+1. Run the following command<br>```./09a_catalystVote.sh new myvote```<br>to generate your Voting-KeyPair files **myvote**.voting.skey and **myvote**.voting.pkey
+1. Done
+
+&nbsp;<br>
+
+### 2. Generate a VotingRegistration-Metadata-CBOR
+
+You need to generate a VotingRegistration-Metadata CBOR file for each of your Stake-Addresses your wanna vote with. In this step you must specify the Voting-KeyPair (from Step 1) and also your Stake-Address-Account on your HW-Wallet. Lets say we wanna vote with our Pool-Owner HW-StakeAccount **hw-owner**, and we want to get the rewards back also to this account.
+
+<br><b>Steps for Rewards back onto the same Stake-Account:</b>
+1. Run the following command<br>```./09a_catalystVote.sh genmeta myvote hw-owner```<br>to generate the VotingRegistration-Metadata CBOR file for your VotingKey-Account **myvote**.voting.pkey and your Stake-Account **hw-owner**.staking.hwsfile
+1. Repeat the above step as often as you like to combine more Stake-Accounts into one Voting-Power (myvote)
+1. Done, you have created one or more **xxx.vote-metadata.cbor** files (*myvote_hw-owner.vote-metadata.cbor* in this example)
+
+&nbsp;<br>
+
+If you want your Voting-Rewards to be paid back to you onto a different Stake-Address, you can specify this as an extra argument to the script call. IMPORTANT, the Stake-Address must also be on THE SAME hardware wallet as your voting Stake-Account. If you don't have an extra account on your hardware-wallet for that yet, you can create one with the script 03a like<br>```./03a_genStakingPaymentAddr.sh catalyst-rewards hw 2```. This would generate a new additional StakingAccount on your HW-Wallet with Account #2. Don't forget to register this new StakingAccount also on the chain via script 03b!
+
+<br><b>Steps for Rewards back onto a different Stake-Account on the same Hardware-Wallet:</b>
+1. Run the following command<br>```./09a_catalystVote.sh genmeta myvote hw-owner catalyst-rewards```<br>to generate the VotingRegistration-Metadata CBOR file for your VotingKey-Account **myvote**.voting.skey and your Stake-Account **hw-owner**.staking.hwsfile. Rewards will be paid back to your **catalyst-rewards**.staking.hwsfile account.
+1. Repeat the above step as often as you like to combine more Stake-Accounts into one Voting-Power (myvote)
+1. Done, you have created one or more **xxx.vote-metadata.cbor** files (*myvote_hw-owner.vote-metadata.cbor* in this example)
+
+&nbsp;<br>
+
+### 3. Transmit the vote-metadata.cbor file on the chain
+
+The last thing you have to do to complete your VotingRegistration is to submit the generated VotingRegistration-Metadata CBOR file in a transaction on the chain. This can be any transaction like sending some lovelaces around, or sending some assets. The most simple command is to just send yourself 1 ADA (minUTXOValue) and include the CBOR file in that transaction. Lets say we wanna do this with a wallet-account with the name **mywallet**, you can also do this with the HW-Wallet itself of course, but you don't have to use the HW-Wallet for this.
+
+<br><b>Steps for transmitting the registration:</b>
+1. Run the following command<br>```./01_sendLovelaces.sh mywallet mywallet 1000000 myvote_hw-owner.vote-metadata.cbor```<br>to transmit the generated VotingRegistration Metadata CBOR file on the chain and to complete your Voting-Registration
+1. Done
+
+The transaction can be made like any other transaction in **online** or in **offline** mode!
+
+&nbsp;<br>
+
+### 4. Generate the QR-Code for the Catalyst-Voting-App
+
+You have successfully transmitted your voting registration onto the chain. To do the voting, you need a special QR-Code that you can scan with your Mobile-Phone and the Catalyst-Voting App to get access to your Voting-Power. Lets say we wanna use the Voting-Account from above in theses examples with the name **myvote** for that, and we wanna protect the Voting-App with the Pin-Code **4321**.
+
+<br><b>Steps for creating the QR-Code:</b>
+1. Run the following command<br>```./09a_catalystVote.sh qrcode myvote 4321```<br>to generate your CatalystApp-QR-Code for the Voting-Account **myvote**.voting.skey with the PinCode **4321**
+1. The QR-Code will be visable on the display. Also you can find a file **myvote**.catalyst-qrcode.png in the directory for later usage.
+1. Scan the QR-Code with the latest version of the Catalyst-Voting-App on your mobile phone to get access to your Voting-Power
+
+
+:warning: Your Voting-Power will be displayed in the Voting-App once the voting is open. The **Voting-Rewards will be paid out from IOHK like Staking-Rewards**, so you must claim them like normal Staking-Rewards from your Rewards-Address by using the script ```01_claimRewards.sh``` as usual.
+
+</details>
+
 &nbsp;<br>&nbsp;<br>
 
 # Import your existing Pool from CLI-Keys or Tutorials
@@ -1191,6 +1272,8 @@ We want to make ourself a pool owner stake address with the nickname owner, we w
 
 :warning: Make sure you transfer enough ADA to your new **owner.payment.addr** so you respect the registered Pledge amount, otherwise you will not get any rewards for you or your delegators!
 
+:warning: Don't forget to register your Rewards-Account on the Chain via script 03b if its different from an Owner-Account!
+
 Done. :smiley:
 </details>
 
@@ -1259,6 +1342,8 @@ ledgerowner as owner and also as rewards-account. We do the signing on the machi
 1. Verify that your owner delegation to your pool is ok by running<br>```./03c_checkStakingAddrOnChain.sh ledgerowner``` if you don't see it instantly, wait a little and retry the same command
 
 :warning: Make sure you transfer enough ADA to your new **ledgerowner.payment.addr** so you respect the registered Pledge amount, otherwise you will not get any rewards for you or your delegators!
+
+:warning: Don't forget to register your Rewards-Account on the Chain via script 03b if its different from an Owner-Account!
 
 Done. :smiley:
 </details>
@@ -1471,6 +1556,8 @@ It's similar to a single owner stake pool registration (example above). All owne
 1. Register your stakepool on the blockchain ```./05c_regStakepoolCert.sh mypool smallwallet1```    
 1. Optionally you can verify that your delegation to your pool is ok by running<br>```./03c_checkStakingAddrOnChain.sh owner-1``` and ```./03c_checkStakingAddrOnChain.sh owner-2``` if you don't see it instantly, wait a little and retry the same command
 
+:warning: Don't forget to register your Rewards-Account on the Chain via script 03b if its different from an Owner-Account!
+
 Done.
 </details>
 
@@ -1573,12 +1660,12 @@ Here you can find the steps to add Metadata (Name, Decimals, an Url, a Picture .
 How does it work: The **Mainnet** TokenRegistryServer (currently maintained by the CardanoFoundation) is fed via a special GitHub Repository https://github.com/cardano-foundation/cardano-token-registry .
 > The TokenRegistryServer for the Public-Testnet is: https://github.com/input-output-hk/metadata-registry-testnet
 
-The script 12a provides you with a method that is using the **cardano-metadata-submitter** binary from IOHK to form and sign the needed JSON file for the registration of your Metadata on this GitHub Repo. You can find the binary here (https://github.com/input-output-hk/cardano-metadata-submitter) or you can simply use the one that is provided within these scripts. After you have created that special JSON file, you can then browse to GitHub and clone the cardano-token-registry Repo into your own repo. After that, upload the special JSON file into the 'mappings' folder and generate a PullRequest to merge it back with the Master-Branch of the CardanoFoundation Repo.
+The script 12a provides you with a method that is using the **token-metadata-creatorr** binary from IOHK to form and sign the needed JSON file for the registration of your Metadata on this GitHub Repo. You can find the binary here (https://github.com/input-output-hk/offchain-metadata-tools) or you can simply use the one that is provided within these scripts. After you have created that special JSON file, you can then browse to GitHub and clone the cardano-token-registry Repo into your own repo. After that, upload the special JSON file into the 'mappings' folder and generate a PullRequest to merge it back with the Master-Branch of the CardanoFoundation Repo.
 
 So lets say we wanna create the Metadata registration JSON for our **SUPERTOKEN** under the policy **mypolicy** we minted before using the 'assets' directory.
 
 <br><b>Steps:</b>
-1. Make sure that the path-setting in the `00_common.sh` config file is correct for the `cardanometa="./cardano-metadata-submitter"` entry. The script will automatically try to find it also in the scripts directory.
+1. Make sure that the path-setting in the `00_common.sh` config file is correct for the `cardanometa="./token-metadata-creator"` entry. The script will automatically try to find it also in the scripts directory.
 
 1. Run ```./12a_genAssetMeta.sh assets/mypolicy.SUPERTOKEN``` to make sure that the AssetFile is automatically filled with all the needed entries.
 
@@ -1915,7 +2002,10 @@ We want to make a pool owner stake address the nickname owner, also we want to r
 
 You can check the balance of your owner.payment and the rewards of owner.staking with the ```./01_queryAddress.sh``` script. Make sure to transfer enough ADA to your owner.payment account so you respect the registered pledge amount.
 
+:warning: Don't forget to register your Rewards-Account on the Chain via script 03b if its different from an Owner-Account!
+
 Done.
+
 </details>
 
 ## Create the StakePool offline with HW-Wallet-Owner-Keys (Ledger/Trezor)
@@ -2033,6 +2123,8 @@ ledgerowner as owner and also as rewards-account. We do the signing on the machi
 :warning: Transfer enough ADA to your new **ledgerowner.payment.addr** so you respect the registered Pledge amount, otherwise you will not get any rewards for you or your delegators!<br>You can always check the balance of your ledgerowner.payment by running ```./01_queryAddress.sh ledgerowner.payment``` on the Online-Machine.<br>You can check about rewards on the ledgerowner.staking by running ```./01_queryAddress.sh ledgerowner.staking```
 
 **Done**, yes this is more work to do when you wanna do this in offline mode, but it is how it is. :smiley:
+
+:warning: Don't forget to register your Rewards-Account on the Chain via script 03b if its different from an Owner-Account!
 
 </details>
 
@@ -2175,6 +2267,8 @@ Why waiting again? Well, **we** also **changed the rewards-account** when we add
 
 > Optional: If you wanna get rid of your old owner entry (you can leave it in there) in your stakepool registration - do the following:
   <br>Do it like the steps above, re-edit your mypool.pool.json file and remove the entry of the old owner from the poolOwner list. Save the file, generate a new certificate by running script 05a. Register it on the chain again like above or like the example below "Update stakepool parameters on the blockchain in Offline-Mode". Now you have only your new ledgerowner in your pool registration. 
+
+:warning: Don't forget to register your Rewards-Account on the Chain via script 03b if its different from an Owner-Account!
 
 </details>
 

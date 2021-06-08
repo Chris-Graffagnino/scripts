@@ -18,9 +18,9 @@ genesisfile_byron="configuration-mainnet/mainnet-byron-genesis.json"       #Byro
 
 
 #--------- Set the Path to your main binaries here ---------
-cardanocli="./cardano-cli"	#Path to your cardano-cli binary you wanna use. If your binary is present in the Path just set it to "cardano-cli" without the "./"
-cardanonode="./cardano-node"	#Path to your cardano-node binary you wanna use. If your binary is present in the Path just set it to "cardano-node" without the "./"
-bech32_bin="./bech32"		#Path to your bech32 binary you wanna use. If your binary is present in the Path just set it to "bech32" without the "./"
+cardanocli="./cardano-cli"	#Path to your cardano-cli binary you wanna use. If your binary is present in the Path just set it to "cardano-cli" without the "./" infront
+cardanonode="./cardano-node"	#Path to your cardano-node binary you wanna use. If your binary is present in the Path just set it to "cardano-node" without the "./" infront
+bech32_bin="./bech32"		#Path to your bech32 binary you wanna use. If your binary is present in the Path just set it to "bech32" without the "./" infront
 
 
 #--------- You can work in offline mode too, please read the instructions on the github repo README :-)
@@ -31,12 +31,17 @@ offlineFile="./offlineTransfer.json" 	#path to the filename (JSON) that will be 
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
+#--------- Only needed if you wanna do catalyst voting or if you wanna include your itn witness for your pool-ticker
+jcli_bin="./jcli"               #Path to your jcli binary you wanna use. If your binary is present in the Path just set it to "jcli" without the "./" infront
+vitkedqr_bin="./vit-kedqr"	#Path to your vit-kedqr binary you wanna use. If your binary is present in the Path just set it to "vit-kedqr" without the "./" infront
+
+
 #--------- Only needed if you wanna use a hardware key (Ledger/Trezor) too, please read the instructions on the github repo README :-)
-cardanohwcli="cardano-hw-cli"      #Path to your cardano-hw-cli binary you wanna use
+cardanohwcli="cardano-hw-cli"      #Path to your cardano-hw-cli binary you wanna use. If your binary is present in the Path just set it to "cardano-hw-cli" without the "./" infront
 
 
 #--------- Only needed if you wanna generate the right format for the NativeAsset Metadata Registry
-cardanometa="./cardano-metadata-submitter" #Path to your cardano-metadata-submitter binary you wanna use. If present in the Path just set it to "cardano-metadata-submitter" without the "./"
+cardanometa="./token-metadata-creator" #Path to your token-metadata-creator binary you wanna use. If present in the Path just set it to "token-metadata-creator" without the "./" infront
 
 
 #--------- Only needed for automated kes/opcert update and upload via scp -----
@@ -57,7 +62,6 @@ addrformat="--mainnet"          #choose "--mainnet" for mainnet address format o
 #--------- some other stuff -----
 showVersionInfo="yes"		#yes/no to show the version info and script mode on every script call
 queryTokenRegistry="yes"	#yes/no to query each native asset/token on the token registry server live
-itn_jcli="./jcli"               #only needed if you wanna include your itn witness for your pool-ticker
 
 
 
@@ -91,11 +95,11 @@ if [[ -f "$HOME/.common.inc" ]]; then source "$HOME/.common.inc"; fi
 if [[ -f "common.inc" ]]; then source "common.inc"; fi
 
 #Don't allow to overwrite the needed Versions, so we set it after the overwrite part
-minNodeVersion="1.26.1"  #minimum allowed node version for this script-collection version
+minNodeVersion="1.27.0"  #minimum allowed node version for this script-collection version
 maxNodeVersion="9.99.9"  #maximum allowed node version, 9.99.9 = no limit so far
-minLedgerCardanoAppVersion="2.2.0"  #minimum version for the cardano-app on the Ledger hardwarewallet
+minLedgerCardanoAppVersion="2.3.2"  #minimum version for the cardano-app on the Ledger hardwarewallet
 minTrezorCardanoAppVersion="2.3.6"  #minimum version for the cardano-app on the Trezor hardwarewallet
-minHardwareCliVersion="1.2.0" #minimum version for the cardano-hw-cli
+minHardwareCliVersion="1.5.0" #minimum version for the cardano-hw-cli
 
 #Set the CARDANO_NODE_SOCKET_PATH for all cardano-cli operations
 export CARDANO_NODE_SOCKET_PATH=${socket}
@@ -131,9 +135,9 @@ exists() {
 if ! exists "${cardanocli}"; then majorError "Path ERROR - Path to cardano-cli is not correct or cardano-cli binaryfile is missing!\nYour current set path is: ${cardanocli}"; exit 1; fi
 versionCLI=$(${cardanocli} version 2> /dev/null |& head -n 1 |& awk {'print $2'})
 versionCheck "${minNodeVersion}" "${versionCLI}"
-if [[ $? -ne 0 ]]; then majorError "Version ERROR - Please use a cardano-node/cli version ${minNodeVersion} or higher !\nOld versions are not supported for security reasons, please upgrade - thx."; exit 1; fi
+if [[ $? -ne 0 ]]; then majorError "Version ${versionCLI} ERROR - Please use a cardano-cli version ${minNodeVersion} or higher !\nOld versions are not supported for security reasons, please upgrade - thx."; exit 1; fi
 versionCheck "${versionCLI}" "${maxNodeVersion}"
-if [[ $? -ne 0 ]]; then majorError "Version ERROR - Please use a cardano-node/cli version between ${minNodeVersion} and ${maxNodeVersion} !\nOther versions are not supported for compatibility issues, please check if newer scripts are available - thx."; exit 1; fi
+if [[ $? -ne 0 ]]; then majorError "Version ${versionCLI} ERROR - Please use a cardano-cli version between ${minNodeVersion} and ${maxNodeVersion} !\nOther versions are not supported for compatibility issues, please check if newer scripts are available - thx."; exit 1; fi
 if ${showVersionInfo}; then echo -ne "\n\e[0mVersion-Info: \e[32mcli ${versionCLI}\e[0m"; fi
 
 #Check cardano-node only in online mode
@@ -141,9 +145,9 @@ if ${onlineMode}; then
 	if ! exists "${cardanonode}"; then majorError "Path ERROR - Path to cardano-node is not correct or cardano-node binaryfile is missing!\nYour current set path is: ${cardanocli}"; exit 1; fi
 	versionNODE=$(${cardanonode} version 2> /dev/null |& head -n 1 |& awk {'print $2'})
 	versionCheck "${minNodeVersion}" "${versionNODE}"
-	if [[ $? -ne 0 ]]; then majorError "Version ERROR - Please use a cardano-node/cli version ${minNodeVersion} or higher !\nOld versions are not supported for security reasons, please upgrade - thx."; exit 1; fi
+	if [[ $? -ne 0 ]]; then majorError "Version ${versionNODE} ERROR - Please use a cardano-node version ${minNodeVersion} or higher !\nOld versions are not supported for security reasons, please upgrade - thx."; exit 1; fi
 	versionCheck "${versionNODE}" "${maxNodeVersion}"
-	if [[ $? -ne 0 ]]; then majorError "Version ERROR - Please use a cardano-node/cli version between ${minNodeVersion} and ${maxNodeVersion} !\nOther versions are not supported for compatibility issues, please check if newer scripts are available - thx."; exit 1; fi
+	if [[ $? -ne 0 ]]; then majorError "Version ${versionNODE} ERROR - Please use a cardano-node version between ${minNodeVersion} and ${maxNodeVersion} !\nOther versions are not supported for compatibility issues, please check if newer scripts are available - thx."; exit 1; fi
 	if ${showVersionInfo}; then echo -ne " / \e[32mnode ${versionNODE}\e[0m"; fi
 fi
 
@@ -163,8 +167,9 @@ if ${showVersionInfo}; then
 							if [ ! -e "${socket}" ]; then echo -ne "\n\n\e[35mWarning: Node-Socket does not exist !\e[0m"; fi
 				fi
 
-				if [[ "${magicparam}" == *"testnet"* ]]; then echo -e "\t\t\e[0mTestnet-Magic: \e[91m$(echo ${magicparam} | cut -d' ' -f 2) \e[0m"; fi
+				if [[ "${magicparam}" == *"testnet"* ]]; then echo -ne "\t\t\e[0mTestnet-Magic: \e[91m$(echo ${magicparam} | cut -d' ' -f 2) \e[0m"; fi
 
+echo
 echo
 fi
 
@@ -485,11 +490,26 @@ calc_minOutUTXO() {
         #${1} = protocol-parameters(json format) content
         #${2} = tx-out string
 
+local protocolParam=${1}
+local multiAsset=$(echo ${2} | cut -d'+' -f 2-) #split at the + marks and only keep lovelaces+assets
+tmp=$(${cardanocli} transaction calculate-min-value --protocol-params-file <(echo ${protocolParam}) --multi-asset "${multiAsset}" 2> /dev/null)
+if [[ $? -ne 0 ]]; then echo -e "\e[35mERROR - Can't calculate minValue for the given tx-out string: ${2} !\e[0m"; exit 1; fi
+echo ${tmp} | cut -d' ' -f 2 #Output is "Lovelace xxxxxx", so return the second part
+}
+
+
+
+#-------------------------------------------------------
+#Calculate the minimum UTXO value that has to be sent depending on the assets and the minUTXO protocol-parameters
+calc_minOutUTXOold() {
+        #${1} = protocol-parameters(json format) content
+        #${2} = tx-out string
+
 local minUTXOValue=$(jq -r .minUTxOValue <<< ${1})
 local minOutUTXO=${minUTXOValue} #preload it with the minUTXOValue (1ADA), will be overwritten if costs are higher
 
 #chain constants, based on the specifications: https://hydra.iohk.io/build/5949624/download/1/shelley-ma.pdf
-local k0=0				#CoinSize=0 in mary-era, 2 in alonzo-era
+local k0=0				#coinSize=0 in mary-era, 2 in alonzo-era
 local k1=6
 local k2=12				#assetSize=12
 local k3=28				#pidSize=28
@@ -503,7 +523,7 @@ IFS='+' read -ra asset_entry <<< "${2}"
 if [[ ${#asset_entry[@]} -gt 2 ]]; then #contains assets, do calculations. otherwise leave it at the default value
         local idx=2
 	local pidCollector=""    #holds the list of individual policyIDs
-	local assetsCollector="" #holds the list of individual assetNumbers
+	local assetsCollector="" #holds the list of individual assetHases (policyID+assetName)
 	local nameCollector=""   #holds the list of individual assetNames(hex format)
 
         while [[ ${#asset_entry[@]} -gt ${idx} ]]; do
@@ -548,6 +568,13 @@ fi
 echo ${minOutUTXO} #return the minOutUTXO value for the txOut-String with or without assets
 }
 #-------------------------------------------------------
+
+
+
+
+
+
+
 
 
 
@@ -697,7 +724,7 @@ if [[ "$(which ${cardanohwcli})" == "" ]]; then echo -e "\n\e[35mError - cardano
 
 versionHWCLI=$(${cardanohwcli} version 2> /dev/null |& head -n 1 |& awk {'print $6'})
 versionCheck "${minHardwareCliVersion}" "${versionHWCLI}"
-if [[ $? -ne 0 ]]; then majorError "Version ERROR - Please use a cardano-hw-cli version ${minHardwareCliVersion} or higher !\nOld versions are not supported for security reasons, please upgrade - thx."; exit 1; fi
+if [[ $? -ne 0 ]]; then majorError "Version ERROR - Please use a cardano-hw-cli version ${minHardwareCliVersion} or higher !\nYour version ${versionHWCLI} is no longer supported for security reasons or features, please upgrade - thx."; exit 1; fi
 
 echo -ne "\e[33mPlease connect & unlock your Hardware-Wallet, open the Cardano-App on Ledger-Devices (abort with CTRL+C)\e[0m\n\n\033[2A\n"
 local tmp=$(${cardanohwcli} device version 2> /dev/stdout)

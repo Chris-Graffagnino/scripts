@@ -10,11 +10,11 @@
 #       cardanonode     Path to the cardano-node executable
 . "$(dirname "$0")"/00_common.sh
 
-#Check cardano-metadata-submitter tool if given path is ok, if not try to use the one in the scripts folder
+#Check token-metadata-creator tool if given path is ok, if not try to use the one in the scripts folder
 if ! exists "${cardanometa}"; then
                                 #Try the one in the scripts folder
-                                if [[ -f "${scriptDir}/cardano-metadata-submitter" ]]; then cardanometa="${scriptDir}/cardano-metadata-submitter";
-                                else majorError "Path ERROR - Path to the 'cardano-metadata-submitter' binary is not correct or 'cardano-metadata-submitter' binaryfile is missing!\nYou can find it here: https://github.com/input-output-hk/cardano-metadata-submitter\nThis is needed to format and sign the NativeAsset Metadata Registry file. Please check your 00_common.sh or common.inc settings."; exit 1; fi
+                                if [[ -f "${scriptDir}/token-metadata-creator" ]]; then cardanometa="${scriptDir}/token-metadata-creator";
+                                else majorError "Path ERROR - Path to the 'token-metadata-creator' binary is not correct or 'token-metadata-creator' binaryfile is missing!\nYou can find it here: https://github.com/input-output-hk/offchain-metadata-tools\nThis is needed to format and sign the NativeAsset Metadata Registry file. Please check your 00_common.sh or common.inc settings."; exit 1; fi
 fi
 
 case $# in
@@ -60,6 +60,7 @@ if [ ! -f "${assetFileName}" ]; then
 				assetFileJSON=$(jq ". += {metaName: \"${assetName}\",
 							  metaDescription: \"\",
 							  \"---\": \"--- Optional additional info ---\",
+							  metaDecimals: \"\",
 							  metaTicker: \"\",
 							  metaUrl: \"\",
 							  metaLogoPNG: \"\",
@@ -70,6 +71,7 @@ if [ ! -f "${assetFileName}" ]; then
                                                           policyID: \"${policyID}\",
                                                           policyValidBeforeSlot: \"${ttlFromScript}\",
                                                           subject: \"${assetSubject}\",
+							  sequenceNumber: \"0\",
                                                           lastUpdate: \"$(date -R)\",
                                                           lastAction: \"created Asset-File\"}" <<< ${assetFileJSON})
 
@@ -85,13 +87,14 @@ if [ ! -f "${assetFileName}" ]; then
 				exit
 fi
 
-#Asset-File exists, lets read out the parameters and save them back in the ordern shown above
+#Asset-File exists, lets read out the parameters and save them back in the order shown above
 #so we have a better editing format in there
 
 #Build Skeleton, all available entries in the real assetFileJSON will overwrite the skeleton entries
 assetFileSkeletonJSON=$(jq ". += {metaName: \"${assetName}\",
                                   metaDescription: \"\",
                                   \"---\": \"--- Optional additional info ---\",
+                                  metaDecimals: \"0\",
                                   metaTicker: \"\",
                                   metaUrl: \"\",
                                   metaLogoPNG: \"\",
@@ -102,6 +105,7 @@ assetFileSkeletonJSON=$(jq ". += {metaName: \"${assetName}\",
                                   policyID: \"${policyID}\",
                                   policyValidBeforeSlot: \"${ttlFromScript}\",
                                   subject: \"${assetSubject}\",
+				  sequenceNumber: \"0\",
                                   lastUpdate: \"$(date -R)\",
                                   lastAction: \"update Asset-File\"}" <<< "{}")
 
@@ -124,29 +128,31 @@ echo
 #Metadata Registry parameter
 
 assetSubject=$(jq -r ".subject" <<< ${assetFileJSON})
+sequenceNumber=$(jq -r ".sequenceNumber" <<< ${assetFileJSON})
+newSequenceNumber=$(( ${sequenceNumber} + 1 ))
 
-echo -e "\e[0mGenerating Registry-Submitter-JSON:\e[32m ${assetSubject}.json \e[0m\n"
+echo -e "\e[0mGenerating Token-Registry-JSON for sequenceNumber ${newSequenceNumber}:\e[32m ${assetSubject}.json \e[0m\n"
 
-submitterArray=("entry" "${assetSubject}" "--init")
+creatorArray=("entry" "${assetSubject}" "--init")
 
 #Check metaName
 echo -ne "Adding 'metaName'        ... "
 metaName=$(jq -r ".metaName" <<< ${assetFileJSON})
 #if [[ ! "${metaName//[[:space:]]}" == "${metaName}" ]]; then echo -e "\e[35mERROR - The metaName '${metaName}' contains spaces, not allowed !\e[0m\n"; exit 1; fi
 if [[ ${#metaName} -lt 1 || ${#metaName} -gt 50 ]]; then echo -e "\e[35mERROR - The metaName '${metaName}' is missing or too long. Max. 50chars allowed !\e[0m\n"; exit 1; fi
-submitterArray+=("--name" "${metaName}")
+creatorArray+=("--name" "${metaName}")
 echo -e "\e[32mOK\e[0m"
 
 #Check metaDescription
 echo -ne "Adding 'metaDescription' ... "
 metaDescription=$(jq -r ".metaDescription" <<< ${assetFileJSON})
 if [[ ${#metaDescription} -gt 500 ]]; then echo -e "\e[35mERROR - The metaDescription is too long. Max. 500chars allowed !\e[0m\n"; exit 1; fi
-submitterArray+=("--description" "${metaDescription}")
+creatorArray+=("--description" "${metaDescription}")
 echo -e "\e[32mOK\e[0m"
 
 #Add policy script
 echo -ne "Adding 'policyScript'    ... "
-submitterArray+=("--policy" "${policyName}.policy.script")
+creatorArray+=("--policy" "${policyName}.policy.script")
 echo -e "\e[32mOK\e[0m"
 
 #Check metaTicker - optional
@@ -155,7 +161,7 @@ if [[ ! "${metaTicker}" == "" ]]; then
 echo -ne "Adding 'metaTicker'      ... "
 	#if [[ ! "${metaTicker//[[:space:]]}" == "${metaTicker}" ]]; then echo -e "\e[35mERROR - The metaTicker '${metaTicker}' contains spaces, not allowed !\e[0m\n"; exit 1; fi
 	if [[ ${#metaTicker} -lt 2 || ${#metaTicker} -gt 5 ]]; then echo -e "\e[35mERROR - The metaTicker '${metaTicker}' must be between 3-5 chars!\e[0m\n"; exit 1; fi
-	submitterArray+=("--ticker" "${metaTicker}")
+	creatorArray+=("--ticker" "${metaTicker}")
 	echo -e "\e[32mOK\e[0m"
 fi
 
@@ -165,22 +171,22 @@ metaUrl=$(jq -r ".metaUrl" <<< ${assetFileJSON})
 if [[ ! "${metaUrl}" == "" ]]; then
 	echo -ne "Adding 'metaUrl'         ... "
 	if [[ ! "${metaUrl}" =~ https://.* || ${#metaUrl} -gt 250 ]]; then echo -e "\e[35mERROR - The metaUrl has an invalid URL format (must be starting with https://) or is too long. Max. 250 chars allowed !\e[0m\n"; exit 1; fi
-	submitterArray+=("--url" "${metaUrl}")
+	creatorArray+=("--url" "${metaUrl}")
 	echo -e "\e[32mOK\e[0m"
 fi
 
 
-#Check metaSubUnitDecimals - optional
-#metaSubUnitDecimals=$(jq -r ".metaSubUnitDecimals" <<< ${assetFileJSON})
-#if [[ ${metaSubUnitDecimals} -gt 0 ]]; then
-#	echo -ne "Adding 'metaSubUnit'     ... "
-#	if [[ ${metaSubUnitDecimals} -gt 19 ]]; then echo -e "\e[35mERROR - The metaSubUnitDecimals '${metaSubUnitDecimals}' is too big. Max. value is 19 decimals !\e[0m\n"; exit 1; fi
+#Check metaDecimals - optional
+metaDecimals=$(jq -r ".metaDecimals" <<< ${assetFileJSON})
+if [[ ${metaDecimals} -gt -1 ]]; then
+	echo -ne "Adding 'metaDecimals'    ... "
+	if [[ ${metaDecimals} -gt 255 ]]; then echo -e "\e[35mERROR - The metaDecimals '${metaDecimals}' is too big. Max. value is 255 decimals !\e[0m\n"; exit 1; fi
 #	metaSubUnitName=$(jq -r ".metaSubUnitName" <<< ${assetFileJSON})
 #	if [[ ! "${metaSubUnitName//[[:space:]]}" == "${metaSubUnitName}" ]]; then echo -e "\e[35mERROR - The metaSubUnitName '${metaSubUnitName}' contains spaces, not allowed !\e[0m\n"; exit 1; fi
 #	if [[ ${#metaSubUnitName} -lt 1 || ${#metaSubUnitName} -gt 30 ]]; then echo -e "\e[35mERROR - The metaSubUnitName '${metaSubUnitName}' is too too long. Max. 30chars allowed !\e[0m\n"; exit 1; fi
-#	submitterArray+=("--unit" "${metaSubUnitDecimals},${metaSubUnitName}")
-#	echo -e "\e[32mOK\e[0m"
-#fi
+	creatorArray+=("--decimals" "${metaDecimals}")
+	echo -e "\e[32mOK\e[0m"
+fi
 
 #Check metaPNG - optional
 metaLogoPNG=$(jq -r ".metaLogoPNG" <<< ${assetFileJSON})
@@ -188,18 +194,24 @@ if [[ ! "${metaLogoPNG}" == "" ]]; then
 	echo -ne "Adding 'metaLogoPNG'     ... "
 	if [ ! -f "${metaLogoPNG}" ]; then echo -e "\e[35mERROR - The metaLogoPNG '${metaLogoPNG}' file was not found !\e[0m\n"; exit 1; fi
 	if [[ $(file -b "${metaLogoPNG}" | grep "PNG" | wc -l) -eq 0 ]]; then echo -e "\e[35mERROR - The metaLogoPNG '${metaLogoPNG}' is not a valid PNG image file !\e[0m\n"; exit 1; fi
-	submitterArray+=("--logo" "${metaLogoPNG}")
+	creatorArray+=("--logo" "${metaLogoPNG}")
 	echo -e "\e[32mOK\e[0m"
 fi
 
 echo
 
 #Execute the file generation and add all the parameters
-echo -ne "Execute draft generation and adding parameters ... "
-#tmp=$(/bin/bash -c "${cardanometa} ${submitterArray}")
-tmp=$(${cardanometa} "${submitterArray[@]}")
+echo -ne "Create JSON draft and adding parameters ... "
+#tmp=$(/bin/bash -c "${cardanometa} ${creatorArray}")
+tmp=$(${cardanometa} "${creatorArray[@]}")
 checkError "$?"; if [ $? -ne 0 ]; then exit $?; fi
 echo -e "\e[32mOK\e[90m (${tmp})\e[0m"
+
+#Update the sequenceNumber to the next higher value
+echo -ne "Update sequenceNumber to ${newSequenceNumber} ... "
+sed -i "s/\"sequenceNumber\":\ .*,/\"sequenceNumber\":\ ${newSequenceNumber},/g" ${tmp}
+checkError "$?"; if [ $? -ne 0 ]; then exit $?; fi
+echo -e "\e[32mOK\e[0m"
 
 #Sign the metadata registry submission json draft file
 echo -ne "Signing with '${policyName}.policy.skey' ... "
@@ -214,6 +226,12 @@ checkError "$?"; if [ $? -ne 0 ]; then exit $?; fi
 echo -e "\e[32mOK\e[90m (${tmp})\e[0m"
 metaFile=${tmp}
 
+#Adding Creator-Credits
+tmpJSON=$(cat ${metaFile})
+tmpJSON=$(jq ". += {tool: {description: \"StakePoolOperator Scripts\", url: \"https://github.com/gitmachtl/scripts\"} } " <<< ${tmpJSON})
+echo -e "${tmpJSON}" > ${metaFile}
+
+
 #Validating the metadata registry submission json file
 echo -ne "Validating the final file ... "
 tmp=$(${cardanometa} validate ${metaFile})
@@ -221,7 +239,7 @@ checkError "$?"; if [ $? -ne 0 ]; then exit $?; fi
 echo -e "\e[32mOK\e[0m"
 
 assetFileJSON=$(cat ${assetFileName})
-assetFileJSON=$(jq ". += {lastUpdate: \"$(date -R)\", lastAction: \"created Metadata-Submitter-File\"}" <<< ${assetFileJSON})
+assetFileJSON=$(jq ". += {sequenceNumber: \"${newSequenceNumber}\", lastUpdate: \"$(date -R)\", lastAction: \"created Token-Registry-JSON\"}" <<< ${assetFileJSON})
 file_unlock ${assetFileName}
 echo -e "${assetFileJSON}" > ${assetFileName}
 file_lock ${assetFileName}
@@ -239,7 +257,7 @@ fi
 assetFileLocation="${assetDir}/${assetSubject}.json"; assetFileLocation=${assetFileLocation/#.\//}
 
 echo
-echo -e "\e[33mYour Metadata-Registry-JSON File is now ready to be submitted to: \e[32mhttps://github.com/cardano-foundation/cardano-token-registry"
+echo -e "\e[33mYour Token-Registry-JSON File is now ready to be submitted to: \e[32mhttps://github.com/cardano-foundation/cardano-token-registry"
 echo -e "\e[33mas a Pull-Request...\n\nYou can find your file here: \e[32m${assetFileLocation}\e[0m";
 
 echo -e "\e[0m\n"

@@ -194,7 +194,7 @@ if [[ "${assetMintName}" == "" ]]; then point=""; else point="."; fi
 #Generate Dummy-TxBody file for fee calculation
 txBodyFile="${tempDir}/dummy.txbody"
 rm ${txBodyFile} 2> /dev/null
-${cardanocli} transaction build-raw ${nodeEraParam} ${txInString} --tx-out "${sendToAddr}+0${assetsOutString}" --mint "${assetMintAmount} ${policyID}${point}${assetMintName}" --invalid-hereafter ${ttl} --fee 0 ${metafileParameter} --out-file ${txBodyFile}
+${cardanocli} transaction build-raw ${nodeEraParam} ${txInString} --tx-out "${sendToAddr}+0${assetsOutString}" --mint "${assetMintAmount} ${policyID}${point}${assetMintName}" --minting-script-file ${policyName}.policy.script --invalid-hereafter ${ttl} --fee 0 ${metafileParameter} --out-file ${txBodyFile}
 checkError "$?"; if [ $? -ne 0 ]; then exit $?; fi
 fee=$(${cardanocli} transaction calculate-min-fee --tx-body-file ${txBodyFile} --protocol-params-file <(echo ${protocolParametersJSON}) --tx-in-count ${txcnt} --tx-out-count ${rxcnt} ${magicparam} --witness-count 2 --byron-witness-count 0 | awk '{ print $1 }')
 checkError "$?"; if [ $? -ne 0 ]; then exit $?; fi
@@ -218,9 +218,8 @@ echo
 
 #Building unsigned transaction body
 rm ${txBodyFile} 2> /dev/null
-${cardanocli} transaction build-raw ${nodeEraParam} ${txInString} --tx-out "${sendToAddr}+${lovelacesToSend}${assetsOutString}" --mint "${assetMintAmount} ${policyID}${point}${assetMintName}" --invalid-hereafter ${ttl} --fee ${fee} ${metafileParameter} --out-file ${txBodyFile}
+${cardanocli} transaction build-raw ${nodeEraParam} ${txInString} --tx-out "${sendToAddr}+${lovelacesToSend}${assetsOutString}" --mint "${assetMintAmount} ${policyID}${point}${assetMintName}" --minting-script-file ${policyName}.policy.script --invalid-hereafter ${ttl} --fee ${fee} ${metafileParameter} --out-file ${txBodyFile}
 checkError "$?"; if [ $? -ne 0 ]; then exit $?; fi
-#echo "${cardanocli} transaction build-raw ${nodeEraParam} ${txInString} --tx-out \"${sendToAddr}+${lovelacesToSend}${assetsOutString}\" --mint \"${assetMintAmount} ${policyID}.${assetMintName}\" --invalid-hereafter ${ttl}  --out-file ${txBodyFile}"
 
 cat ${txBodyFile}
 echo
@@ -230,9 +229,8 @@ echo
 
 #Sign the unsigned transaction body with the SecureKey
 rm ${txFile} 2> /dev/null
-${cardanocli} transaction sign --tx-body-file ${txBodyFile} --signing-key-file ${fromAddr}.skey --signing-key-file ${policyName}.policy.skey --script-file ${policyName}.policy.script ${magicparam} --out-file ${txFile}
+${cardanocli} transaction sign --tx-body-file ${txBodyFile} --signing-key-file ${fromAddr}.skey --signing-key-file ${policyName}.policy.skey ${magicparam} --out-file ${txFile}
 checkError "$?"; if [ $? -ne 0 ]; then exit $?; fi
-#echo "${cardanocli} transaction sign --tx-body-file ${txBodyFile} --signing-key-file ${fromAddr}.skey --signing-key-file ${policyName}.policy.skey --script-file ${policyName}.policy.script ${magicparam} --out-file ${txFile}"
 
 cat ${txFile}
 echo
@@ -260,6 +258,7 @@ if ask "\e[33mDoes this look good for you, continue ?" N; then
                                                                   \"---\": \"--- Optional additional info ---\",
                                                                   metaTicker: \"\",
                                                                   metaUrl: \"\",
+                                                                  metaDecimals: \"0\",
                                                                   metaLogoPNG: \"\",
                                                                   \"===\": \"--- DO NOT EDIT BELOW THIS LINE !!! ---\",
                                                                   minted: \"0\"}" <<< "{}")
